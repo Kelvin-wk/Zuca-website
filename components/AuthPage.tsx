@@ -33,36 +33,39 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
 
   const handleGoogleSignIn = async () => {
     const ADMIN_AUTH_KEY = 'ZUCA-ADMIN-2026';
-    
-    // Only require admin key if we are explicitly in Admin Mode AND trying to register/first-time login
-    // However, we don't know if they exist yet. 
-    // Let's allow the popup first, then check their role.
+    console.log("[AuthPage] Starting Google Sign-In. Admin Mode:", isAdminMode);
     
     setIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const firebaseUser = userCredential.user;
+      console.log("[AuthPage] Firebase Auth success:", firebaseUser.email);
       
       let userData;
       try {
+        console.log("[AuthPage] Fetching user data for UID:", firebaseUser.uid);
         userData = await firebaseService.getUser(firebaseUser.uid);
       } catch (e) {
-        console.warn("Failed to fetch user data after Google sign-in:", e);
+        console.warn("[AuthPage] Failed to fetch user data after Google sign-in:", e);
       }
 
       if (userData) {
+        console.log("[AuthPage] Found existing user data. Role:", userData.role);
         // If they are trying to login as admin but don't have the role, warn them
         if (isAdminMode && userData.role !== UserRole.LEADER && userData.role !== UserRole.TRAINER) {
+          console.warn("[AuthPage] User is not an admin. Denying access in Admin Mode.");
           setErrorMsg("This account does not have administrative privileges. Please sign in as a Member.");
           await auth.signOut();
           return;
         }
         onLogin(userData as User);
       } else {
+        console.log("[AuthPage] No user data found. Prompting for registration.");
         // Account not found - Request Sign Up
         // If they want to be an admin, they MUST have the key now
         if (isAdminMode && formData.adminKey !== ADMIN_AUTH_KEY) {
+          console.warn("[AuthPage] Missing or incorrect admin key for new Google registration.");
           setErrorMsg("To register as an Administrator via Google, please enter the correct Admin Authorization Key in the field first.");
           await auth.signOut();
           return;
@@ -74,6 +77,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
             <p className="text-[9px] opacity-70 uppercase tracking-widest">Would you like to initialize your profile now?</p>
             <button 
               onClick={async () => {
+                console.log("[AuthPage] Initializing new profile via Google...");
                 setIsLoading(true);
                 try {
                   const newUser: User = {
@@ -89,8 +93,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                     profilePic: firebaseUser.photoURL || undefined
                   };
                   await firebaseService.saveUser(newUser);
+                  console.log("[AuthPage] New profile created successfully.");
                   onLogin(newUser);
                 } catch (err) {
+                  console.error("[AuthPage] Failed to initialize profile:", err);
                   setErrorMsg("Failed to initialize profile. Please try manual registration.");
                 } finally {
                   setIsLoading(false);
@@ -105,8 +111,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         // We don't sign out yet, we give them the option to initialize
       }
     } catch (error: any) {
+      console.error("[AuthPage] Google Sign-In Error:", error);
       const errorMessage = getErrorMessage(error);
       if (errorMessage) setErrorMsg(errorMessage);
+      else setErrorMsg(`Google Sign-In failed: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
