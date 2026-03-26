@@ -22,6 +22,46 @@ import { firebaseService } from './services/firebaseService';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
+// Error Boundary Component to catch and display runtime errors
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("[ErrorBoundary] Caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 border border-red-500/50">
+            <i className="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+          </div>
+          <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
+          <p className="text-slate-400 mb-6 max-w-md">The application encountered an unexpected error. We've logged the details for our team.</p>
+          <div className="bg-slate-800 p-4 rounded-lg text-left text-xs font-mono mb-6 max-w-full overflow-auto border border-slate-700">
+            {this.state.error?.toString()}
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors font-medium"
+          >
+            Reload Application
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -35,34 +75,46 @@ const App: React.FC = () => {
   const [isFaithAIOpen, setIsFaithAIOpen] = useState(false);
 
   useEffect(() => {
+    console.log("[App] Initializing auth listener...");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log("[App] Auth state changed:", firebaseUser ? `User: ${firebaseUser.email}` : "No user");
       setIsAuthReady(true);
       if (firebaseUser) {
         // User is signed in, fetch data
         try {
+          console.log("[App] Fetching user data for UID:", firebaseUser.uid);
           const userData = await firebaseService.getUser(firebaseUser.uid);
           if (userData) {
             const u = userData as User;
+            console.log("[App] User data loaded successfully:", u.name);
             setUser(u);
             localStorage.setItem('zuca_user', JSON.stringify(u));
             storageService.saveUser(u);
           } else {
+            console.warn("[App] User authenticated but no document found in Firestore.");
             // If user exists in Auth but not in Firestore, we don't automatically create one.
             // This is handled in AuthPage.tsx for new logins.
             await auth.signOut();
             setUser(null);
           }
         } catch (error) {
-          console.error("Failed to fetch user data on auth change:", error);
+          console.error("[App] Failed to fetch user data on auth change:", error);
           addNotification("Connection slow. Using offline data.", "info");
           // If we have a cached user, use it as fallback
           const savedUser = localStorage.getItem('zuca_user');
           if (savedUser) {
-            setUser(JSON.parse(savedUser));
+            try {
+              const parsed = JSON.parse(savedUser);
+              setUser(parsed);
+              console.log("[App] Fallback to cached user data:", parsed.name);
+            } catch (e) {
+              console.error("[App] Failed to parse cached user:", e);
+            }
           }
         }
       } else {
         // User is signed out
+        console.log("[App] User is signed out.");
         setUser(null);
         localStorage.removeItem('zuca_user');
       }
@@ -183,15 +235,17 @@ const App: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen relative flex items-center justify-center overflow-x-hidden bg-slate-900">
-        <div className="fixed inset-0 z-0">
-          <img src="https://newspro.co.ke/wp-content/uploads/2024/02/slide1.png" className="w-full h-full object-cover" alt="Zetech" />
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-slate-900/50 to-blue-900/60 backdrop-blur-[2px]"></div>
+      <ErrorBoundary>
+        <div className="min-h-screen relative flex items-center justify-center overflow-x-hidden bg-slate-900">
+          <div className="fixed inset-0 z-0">
+            <img src="https://newspro.co.ke/wp-content/uploads/2024/02/slide1.png" className="w-full h-full object-cover" alt="Zetech" />
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-slate-900/50 to-blue-900/60 backdrop-blur-[2px]"></div>
+          </div>
+          <div className="relative z-10 w-full max-w-5xl m-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 animate-scale-in">
+            <AuthPage onLogin={handleLogin} />
+          </div>
         </div>
-        <div className="relative z-10 w-full max-w-5xl m-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/20 animate-scale-in">
-          <AuthPage onLogin={handleLogin} />
-        </div>
-      </div>
+      </ErrorBoundary>
     );
   }
 
@@ -252,7 +306,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 relative overflow-x-hidden">
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col md:flex-row bg-slate-50/50 dark:bg-slate-950/50 transition-colors duration-300 relative overflow-x-hidden">
       {/* Fixed Persistent Background Image - Refined for clarity and diminished feel */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <motion.img 
@@ -382,6 +437,7 @@ const App: React.FC = () => {
         </footer>
       </div>
     </div>
+    </ErrorBoundary>
   );
 };
 
