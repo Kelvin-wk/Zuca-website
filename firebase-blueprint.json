@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "points": { "type": "number" },
+        "joinedAt": { "type": "string" },
+        "stewardshipKey": { "type": "string" }
+      },
+      "required": ["id", "username", "name", "email", "role", "points", "joinedAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in the fellowship hub",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "userId", "userName", "content", "timestamp"]
+    },
+    "UpdatePost": {
+      "title": "UpdatePost",
+      "description": "Community updates and events",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "userId", "title", "content", "category", "timestamp"]
+    },
+    "PrayerPetition": {
+      "title": "PrayerPetition",
+      "description": "A prayer request on the wall",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "likes": { "type": "number" }
+      },
+      "required": ["id", "userId", "userName", "content", "timestamp", "likes"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "An item in the Divine Gallery",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "title", "category", "image", "description", "timestamp"]
+    },
+    "ChoirMaterial": {
+      "title": "ChoirMaterial",
+      "description": "A resource in the Choir Treasury",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string" },
+        "url": { "type": "string" },
+        "fileName": { "type": "string" },
+        "uploadedBy": { "type": "string" },
+        "uploaderName": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "title", "type", "url", "uploadedBy", "uploaderName", "timestamp"]
+    },
+    "GoogleToken": {
+      "title": "GoogleToken",
+      "description": "Google OAuth tokens for Calendar access",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "access_token": { "type": "string" },
+        "refresh_token": { "type": "string" },
+        "expiry_date": { "type": "number" },
+        "token_type": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "required": ["userId", "access_token", "refresh_token", "expiry_date"]
+    },
+    "Presence": {
+      "title": "Presence",
+      "description": "Real-time user presence status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "profilePic": { "type": "string" },
+        "lastSeen": { "type": "object" }
+      },
+      "required": ["id", "name", "lastSeen"]
+    },
+    "DailyContent": {
+      "title": "DailyContent",
+      "description": "Daily inspiration and scripture",
+      "type": "object",
+      "properties": {
+        "verse": { "type": "string" },
+        "reference": { "type": "string" },
+        "inspiration": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["verse", "reference", "inspiration"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/chat/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Fellowship hub messages"
+    },
+    "/updates/{updateId}": {
+      "schema": "UpdatePost",
+      "description": "Community updates"
+    },
+    "/petitions/{petitionId}": {
+      "schema": "PrayerPetition",
+      "description": "Prayer petitions"
+    },
+    "/gallery/{itemId}": {
+      "schema": "GalleryItem",
+      "description": "Divine Gallery items"
+    },
+    "/choir/{materialId}": {
+      "schema": "ChoirMaterial",
+      "description": "Choir Treasury materials"
+    },
+    "/google_tokens/{userId}": {
+      "schema": "GoogleToken",
+      "description": "Google OAuth tokens"
+    },
+    "/presence/{userId}": {
+      "schema": "Presence",
+      "description": "User presence status"
+    },
+    "/daily/{docId}": {
+      "schema": "DailyContent",
+      "description": "Daily spiritual content"
+    }
+  }
+}

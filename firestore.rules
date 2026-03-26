@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: id, username, name, email, role, points, joinedAt
+    //
+    // Collection: chat
+    // Fields: id, userId, userName, content, timestamp, media
+    //
+    // Collection: updates
+    // Fields: id, userId, title, content, category, timestamp
+    //
+    // Collection: petitions
+    // Fields: id, userId, userName, content, timestamp, likes, isAnonymous
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'Guest') in ['Leader', 'Trainer']) ||
+          (request.auth.token.email == "zuca74339@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'username', 'name', 'email', 'role', 'points', 'joinedAt']) &&
+             data.id is string && data.username is string && data.name is string &&
+             data.email is string && data.role is string && data.points is number;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['id', 'userId', 'userName', 'content', 'timestamp']) &&
+             data.id is string && data.userId is string && data.userName is string &&
+             data.content is string && data.content.size() < 5000;
+    }
+
+    function isValidPetition(data) {
+      return data.keys().hasAll(['id', 'userId', 'userName', 'content', 'timestamp', 'likes']) &&
+             data.id is string && data.userId is string && data.userName is string &&
+             data.content is string && data.likes is number;
+    }
+
+    function hasValidAdminKey(data) {
+      let role = data.get('role', 'Guest');
+      return role in ['Leader', 'Trainer'] ? (data.get('stewardshipKey', '') == 'ZUCA-ADMIN-2026') : true;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && hasValidAdminKey(request.resource.data);
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    match /chat/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidChatMessage(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /updates/{updateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /daily/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /petitions/{petitionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidPetition(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /gallery/{itemId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /choir/{materialId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /google_tokens/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
